@@ -377,6 +377,47 @@ datatable_jm(kegg_gsea_df_median, column = c("core_enrichment"))
 knitr::include_graphics(paste0(resultatsplots_t, "/kegg_graph_median.png"), dpi = 100)
 ```
 
+### HALLMARKS
+
+```{r}
+library(msigdbr)
+library(fgsea)
+
+```
+
+```{r}
+msigdbr_df <- msigdbr(species = "human", category = "H")
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$entrez_gene, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+length(pathwaysH)
+pathwaysH[1]
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+data.frame(fgseaRes)
+
+```
+
+
+
+
+```{r}
+msigdbr_df <- msigdbr(species = "human", category = "H")
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$entrez_gene, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+length(pathwaysH)
+pathwaysH[1]
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+data.frame(fgseaRes)
+
+```
+
 
 ## Quartils 
 ```{r}
