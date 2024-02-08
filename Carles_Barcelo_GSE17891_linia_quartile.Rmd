@@ -1,0 +1,491 @@
+---
+title: "Dataset GSE17891"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    theme: flatly
+    highlight: kate
+    code_folding: hide
+  pdf_document:
+    toc: yes
+editor_options:
+  
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+# Id
+ID <- "GSE17891"
+
+carpeta <- paste0("./RESULTATS_",ID)
+dir.create(carpeta)
+
+# DIRECTORIS LINIA
+
+linia <- paste0(carpeta, "/", "LINIA")
+dir.create(linia)
+
+resultatsplots_l <- paste0(linia,"/","PLOTS")
+resultatstaules_l <- paste0(linia,"/","TAULES")
+resultatsobjectes_l <- paste0(linia,"/","OBJECTES_R")
+
+dir.create(resultatsplots_l)
+dir.create(resultatstaules_l)
+dir.create(resultatsobjectes_l)
+
+# DATATABLE
+
+datatable_jm<-function(x,column=NULL){
+datatable(
+  x,
+  extensions = 'Buttons',
+  filter = list(position = 'top', clear = T),
+  options = list(dom = 'Blfrtip',
+                 scrollX = TRUE, scrollCollapse = TRUE,
+                 # buttons = list(list(extend = 'colvis')),
+                 buttons = list(list(extend = 'colvis'),'copy', 'print',
+                                list(extend = 'collection',
+                                     buttons = c('csv', 'excel', 'pdf'),
+                                     text = 'Download')),
+                 columnDefs = list(list(visible=FALSE, targets=column))))}
+
+```
+
+```{r include=FALSE}
+## Global options
+source("/usr/local/lib/R/site-library/AnalisisArrays2/templates/llibreries_Informes.R")
+knitr::opts_chunk$set(warning = F,message = F,class.source = "watch-out")
+
+library(oligo)
+library(DT)
+library(clusterProfiler)
+library(genefilter)
+library(dplyr)
+library(rrvgo)
+
+```
+
+
+```{r eval=FALSE}
+# Differential expression analysis with limma
+library(GEOquery)
+library(limma)
+library(umap)
+
+# load series and platform data from GEO
+
+gset <- getGEO("GSE17891", GSEMatrix =TRUE, AnnotGPL=TRUE)
+
+## check how many platforms used
+length(gset)
+## if more than one dataset is present, you can analyse the other dataset by changing the number inside the [[...]]
+head(gset[[1]]@phenoData@data)
+
+gset<-gset[[1]]
+
+save(gset, file= paste0(carpeta,"/gset"))
+
+png("./RESULTATS_GSE17891/boxplot.png")
+boxplot(gset,las=2)
+dev.off()
+
+```
+
+Aquesta base de dades conté resultats obtinguts de teixit i linia cel·lular. 
+No és possible dur a terme l'anàlisi conjunt, es realitza per separat
+```{r}
+knitr::include_graphics("./RESULTATS_GSE17891/boxplot.png", dpi = 100)
+```
+
+
+# 2. Anàlisi linia cel·lular
+
+
+```{r echo=TRUE}
+load(file = paste0(carpeta, "/gset"))
+
+gset <- gset[,grep("line",gset@phenoData@data$characteristics_ch1)]
+save(gset, file= paste0(resultatsobjectes_l,"/gset"))
+
+```
+
+# Normalització
+Aquestes dades ja es troben normalitzades. 
+No s'aplica cap normalització.
+
+# Expressió de PLAC8
+```{r}
+matriu_exprs <- exprs(gset) 
+boxplot(gset,las=2)
+
+```
+
+
+# Expressió diferencial grups (high/low expression PLAC8)
+Es realitza l'expressió diferencial en funció de la mediana o els quartils Q1 i Q4 de l'expressió de PLAC8 
+
+## Quartils 
+```{r}
+## Creació del grup en funció dels quartils
+matriu_exprs <- exprs(gset)
+quartiles <- quantile(matriu_exprs[gset@featureData@data$ID[gset@featureData@data$`Gene symbol`=="PLAC8"],])
+
+# S'ha de fer amb condicional 
+
+expressio <- exprs(gset[gset@featureData@data$ID=="219014_at",])
+
+gset@phenoData@data$gquantile<-rep(NA,dim(gset)[2])
+
+for (i in 1:length(expressio)){
+if(expressio[i]<=quartiles[[2]]){
+  gset@phenoData@data$gquantile[i]<-"Q1"
+  
+}else if (expressio[i]>=quartiles[[4]]){
+  gset@phenoData@data$gquantile[i]<-"Q4"}
+  else{gset@phenoData@data$gquantile[i]<-"res"}}
+
+# Expressió diferencial: grups Q1 vs Q4. 
+
+# table(gset@phenoData@data$gquantile)
+groups = gset@phenoData@data$gquantile
+groups<-gsub("Q1","LOW",groups)
+groups<-gsub("Q4","HIGH",groups)
+groups<-as.factor(groups)
+
+design = model.matrix(~ 0 + groups)
+colnames(design)<-gsub("groups","",colnames(design))
+
+data.fit = lmFit(matriu_exprs,design)
+
+contrast.matrix = makeContrasts(LOW-HIGH,levels=design)
+data.fit.con = contrasts.fit(data.fit,contrast.matrix)
+data.fit.eb = eBayes(data.fit.con)
+
+table_DEG_quartil <- topTable(data.fit.eb, number = Inf,adjust.method = "fdr",genelist = gset@featureData@data)
+
+table_DEG_sig_quartil <-table_DEG_quartil %>% 
+  filter(adj.P.Val<=0.05)
+dim(table_DEG_sig_quartil)
+
+save(table_DEG_quartil, file= paste0(resultatstaules_l, "/table_DEG_quartil"))
+save(table_DEG_sig_quartil, file= paste0(resultatstaules_l, "/table_DEG_sig_quartil"))
+
+```
+
+Només hi ha un gen (PLAC8) diferencialment expressat significatiu (en funció de quartil)
+```{r}
+load(paste0(resultatstaules_l, "/table_DEG_sig_quartil"))
+
+datatable_jm(table_DEG_sig_quartil, column = c("GO.Process", "GO.Function","GO.Process.ID", "GO.Function.ID"))
+
+```
+
+
+### GO GSEA
+```{r}
+library(org.Hs.eg.db)
+library(clusterProfiler)
+
+load(paste0(resultatstaules_l, "/table_DEG_quartil"))
+
+table_DEG_complete<-
+  table_DEG_quartil[table_DEG_quartil$Gene.ID!="",]
+
+table_DEG_complete<-
+table_DEG_complete %>% group_by(Gene.ID) %>% 
+  filter(adj.P.Val==min(adj.P.Val))
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$Gene.ID
+
+save(table_DEG_complete, file= paste0(resultatstaules_l, "/table_DEG_complete_quartil"))
+
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+
+set.seed(123)
+GO_gsea <- gseGO(geneList     = geneList,
+              OrgDb        = org.Hs.eg.db,
+              ont          = "BP",
+                # minGSSize    = 100,
+                # maxGSSize    = 500,
+              pvalueCutoff = 0.05,
+              verbose      = T
+              )
+
+# GO_gsea
+GO_gsea <- setReadable(GO_gsea, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
+save(GO_gsea,file = paste0(resultatsobjectes_l, "/GO_gsea_quartil"))
+```
+
+
+```{r}
+load(paste0(resultatsobjectes_l, "/GO_gsea_quartil"))
+load(paste0(resultatstaules_l, "/table_DEG_complete_quartil"))
+
+# reducedTerms
+
+GO_gsea_df<-GO_gsea@result
+GO_gsea_df<-GO_gsea@result %>%
+  filter(p.adjust<=0.05)
+
+
+num_gens <-unlist(lapply(GO_gsea_df$core_enrichment, function(x) sum(table_DEG_complete$Gene.symbol%in%strsplit(x ,"/")[[1]]) ))
+name_gens <-unlist(lapply(GO_gsea_df$core_enrichment, function(x) paste(table_DEG_complete$Gene.symbol[(table_DEG_complete$Gene.symbol%in%strsplit(x,"/")[[1]])],collapse = "/") ))
+
+GO_gsea_df$num_gens<-num_gens
+GO_gsea_df$name_gens<-name_gens
+
+library(rrvgo)
+
+simMatrix <- calculateSimMatrix(GO_gsea_df$ID,
+                                orgdb="org.Hs.eg.db",
+                                ont="BP",
+                                method="Rel")
+
+scores <- setNames(-log10(GO_gsea_df$qvalue), GO_gsea_df$ID)
+
+reducedTerms_quartile <- reduceSimMatrix(simMatrix,
+                                scores,
+                                threshold=0.7,
+                                orgdb="org.Hs.eg.db")
+
+
+png(paste0(resultatsplots_l, "/treemapplot_quartile.png"),width = 900,height = 600,res=100)
+treemapPlot(reducedTerms_quartile)
+dev.off()
+```
+
+```{r}
+knitr::include_graphics(paste0(resultatsplots_l, "/treemapplot_quartile.png"), dpi = 100)
+```
+
+### KEGG GSEA
+```{r}
+load(paste0(resultatstaules_l, "/table_DEG_complete_quartil"))
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$Gene.ID
+
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+set.seed(123)
+kegg_gsea <- gseKEGG(geneList     = geneList,
+               organism     = 'hsa',
+               # minGSSize    = 120,
+               pvalueCutoff = 0.05,
+               verbose      = FALSE
+               )
+
+kegg_gsea <- setReadable(kegg_gsea, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
+
+save(kegg_gsea,file = paste0(resultatsobjectes_l, "/kegg_gsea_quartile"))
+```
+
+
+```{r}
+load(paste0(resultatsobjectes_l, "/kegg_gsea_quartile"))
+load(paste0(resultatstaules_l, "/table_DEG_complete_quartil"))
+
+
+kegg_gsea_df<-kegg_gsea@result
+kegg_gsea_df<-kegg_gsea@result %>%
+  filter(p.adjust<=0.05) 
+
+# kegg_gsea_df<-kegg_gsea_df[grepl(keys,kegg_gsea@result$Description,ignore.case = T),]
+
+num_gens<-unlist(lapply(kegg_gsea_df$core_enrichment, function(x) sum(table_DEG_complete$Gene.symbol%in%strsplit(x ,"/")[[1]]) ))
+name_gens<-unlist(lapply(kegg_gsea_df$core_enrichment, function(x) paste(table_DEG_complete$Gene.symbol[(table_DEG_complete$Gene.symbol%in%strsplit(x,"/")[[1]])],collapse = "/") ))
+
+kegg_gsea_df$num_gens<-num_gens
+kegg_gsea_df$name_gens<-name_gens
+
+kegg_gsea_df<-
+kegg_gsea_df %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+
+kegg_gsea_df_p<-kegg_gsea_df %>%
+  arrange(NES) %>% 
+  slice_head(n=20)
+
+kegg_graph <- kegg_gsea_df_p %>% group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(Description, NES))) + 
+  geom_segment(aes(yend = Description,colour = p.adjust), xend = 0, size=3) +
+  geom_point(aes(color = p.adjust),size = 5) +
+    theme_bw(base_size = 15) +
+  theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    # ggtitle(paste0("First ",num_GO, " up & ", num_GO," down regulated specific GO"))+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+kegg_gsea_df_quartile <- kegg_gsea_df
+
+png(paste0(resultatsplots_l, "/kegg_graph_quantile.png"),width = 900,height = 600,res=100)
+kegg_gsea_df_p %>% group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(Description, NES))) + 
+  geom_segment(aes(yend = Description,colour = p.adjust), xend = 0, size=3) +
+  geom_point(aes(color = p.adjust),size = 5) +
+    theme_bw(base_size = 15) +
+  theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    # ggtitle(paste0("First ",num_GO, " up & ", num_GO," down regulated specific GO"))+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+dev.off()
+
+save(kegg_gsea_df_quartile,file = paste0(resultatstaules_l, "/kegg_gsea_df_quartile"))
+
+```
+
+```{r}
+load(paste0(resultatstaules_l, "/kegg_gsea_df_quartile"))
+
+datatable_jm(kegg_gsea_df_quartile, column = c("core_enrichment"))
+```
+
+```{r}
+knitr::include_graphics(paste0(resultatsplots_l, "/kegg_graph_quantile.png"), dpi = 100)
+```
+
+### HALLMARKS amb entrez ID
+
+```{r}
+library(msigdbr)
+library(fgsea)
+```
+
+```{r}
+load(paste0(resultatstaules_l, "/table_DEG_complete_quartil"))
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$Gene.ID
+
+msigdbr_df <- msigdbr(species = "human", category = "H")
+colnames(msigdbr_df)
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$entrez_gene, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+set.seed(123)
+length(pathwaysH)
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+fgseaRes <- data.frame(fgseaRes)
+
+fgseaRes <- fgseaRes %>% 
+  filter(pval<0.05)
+
+fgseaRes$leadingEdge_1<-
+unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
+
+fgseaRes<- fgseaRes %>% 
+  select(-leadingEdge)
+
+# Representació gràfica 
+
+fgseaRes <- fgseaRes %>%
+  arrange(NES)%>% 
+  slice_head(n=20)
+
+fgseaRes <-
+fgseaRes %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up")) %>% 
+  arrange(desc(NES))
+
+fgseaRes_graph <- fgseaRes %>% 
+    group_by(NES_cat) %>%
+      slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway, NES))) + 
+  geom_segment(aes(yend = pathway,colour = pval), xend = 0, size=3) +
+  geom_point(aes(color = pval),size = 5) +
+    theme_bw(base_size = 15) +
+  theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    # ggtitle(paste0("First ",num_GO, " up & ", num_GO," down regulated specific GO"))+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+fgseaRes_graph
+
+save(fgseaRes, file=paste0(resultatstaules_l, "/hallmarks_quartile_linia_entrez_ID"))
+write.csv(fgseaRes, file="./RESULTATS_GSE17891/LINIA/TAULES/hallmarks_quartile_linia_entrez_ID.csv") 
+
+png(paste0(resultatsplots_l, "/hallmarks_quartile_linia_graph_entrez_ID.png"),width = 900,height = 600,res=100)
+fgseaRes_graph
+dev.off()
+
+```
+
+### HALLMARKS amb Gene Symbol
+
+```{r}
+load(paste0(resultatstaules_l, "/table_DEG_complete_quartil"))
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$Gene.symbol
+
+msigdbr_df <- msigdbr(species = "human", category = "H")
+colnames(msigdbr_df)
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+set.seed(123)
+length(pathwaysH)
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+fgseaRes <- data.frame(fgseaRes)
+
+fgseaRes <- fgseaRes %>% 
+  filter(pval<0.05)
+
+class(fgseaRes$leadingEdge)
+fgseaRes$leadingEdge_1<-
+unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
+
+fgseaRes<- fgseaRes %>% 
+  select(-leadingEdge)
+
+# Representació gràfica 
+
+fgseaRes <- fgseaRes %>%
+  arrange(NES)%>% 
+  slice_head(n=20)
+
+fgseaRes <-
+fgseaRes %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up")) %>% 
+  arrange(desc(NES))
+
+fgseaRes_graph <- fgseaRes %>% 
+    group_by(NES_cat) %>%
+      slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway, NES))) + 
+  geom_segment(aes(yend = pathway,colour = pval), xend = 0, size=3) +
+  geom_point(aes(color = pval),size = 5) +
+    theme_bw(base_size = 15) +
+  theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    # ggtitle(paste0("First ",num_GO, " up & ", num_GO," down regulated specific GO"))+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+fgseaRes_graph
+
+save(fgseaRes, file=paste0(resultatstaules_l, "/hallmarks_quartile_linia"))
+write.csv(fgseaRes, file="./RESULTATS_GSE17891/LINIA/TAULES/hallmarks_quartile_linia.csv") 
+
+png(paste0(resultatsplots_l, "/hallmarks_quartile_linia_graph.png"),width = 900,height = 600,res=100)
+fgseaRes_graph
+dev.off()
+
+```
+
