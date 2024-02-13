@@ -404,7 +404,6 @@ dev.off()
 save(fgseaRes, file="./RESULTATS_GSE36924/hallmarks_median_1")
 write.csv(fgseaRes, file="./RESULTATS_GSE36924/hallmarks_median_1.csv")
 
-datatable_jm(fgseaRes)
 ```
 
 ### HALLMARKS amb entrez_ID (Gene_ID)
@@ -488,7 +487,7 @@ write.csv(fgseaRes, file="./RESULTATS_GSE36924/hallmarks_median_1_graph_entrez_I
 
 ```
 
-### C2 subcategory CP:KEGG GENE SYMBOL!!!!!!!!!!!!!
+### C2 subcategory CP:KEGG 
 ```{r}
 # GeneList
 geneList<-table_DEG_complete$logFC

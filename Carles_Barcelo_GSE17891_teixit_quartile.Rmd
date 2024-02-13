@@ -294,7 +294,8 @@ kegg_gsea_df %>%
   mutate(NES_cat=ifelse(NES<0,"Down","Up"))
 
 kegg_gsea_df_p<-kegg_gsea_df %>%
-  arrange(NES) %>% 
+  group_by(NES_cat) %>% 
+  arrange(pvalue) %>%  
   slice_head(n=20)
 
 kegg_graph <- kegg_gsea_df_p %>% group_by(NES_cat) %>%
@@ -314,19 +315,7 @@ kegg_graph <- kegg_gsea_df_p %>% group_by(NES_cat) %>%
 kegg_gsea_df_quartile <- kegg_gsea_df
 
 png(paste0(resultatsplots_t, "/kegg_graph_quantile.png"),width = 900,height = 600,res=100)
-kegg_gsea_df_p %>% group_by(NES_cat) %>%
-    slice_head(n=10) %>% 
-    ggplot(aes(x = NES, y = fct_reorder(Description, NES))) + 
-  geom_segment(aes(yend = Description,colour = p.adjust), xend = 0, size=3) +
-  geom_point(aes(color = p.adjust),size = 5) +
-    theme_bw(base_size = 15) +
-  theme(text = element_text(size=12))+
-    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
-    ylab(NULL)+
-    # ggtitle(paste0("First ",num_GO, " up & ", num_GO," down regulated specific GO"))+
-    facet_grid(.~NES_cat,scales = "free")+
-  scale_colour_continuous(low = "#f29191",
-                         high = "#4ca4fc")
+kegg_graph
 dev.off()
 
 save(kegg_gsea_df_quartile,file = paste0(resultatstaules_t, "/kegg_gsea_df_quartile"))
@@ -346,7 +335,7 @@ knitr::include_graphics(paste0(resultatsplots_t, "/kegg_graph_quantile.png"), dp
 ```
 
 
-### HALLMARKS
+### HALLMARKS amb Gene Symbol 
 
 ```{r}
 library(msigdbr)
@@ -381,33 +370,46 @@ unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
 
 fgseaRes<- fgseaRes %>% 
   select(-leadingEdge)
+```
 
+```{r}
+datatable_jm(fgseaRes)
+```
+
+
+```{r}
 # Representació gràfica 
-
-fgseaRes <- fgseaRes %>%
-  slice_head(n=20) %>% 
-  arrange(NES)
 
 fgseaRes <-
 fgseaRes %>% 
-  mutate(NES_cat=ifelse(NES<0,"Down","Up"))  
-  
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+num<-20
 
-fgseaRes_graph <- fgseaRes %>% 
+fgseaRes_1 <- fgseaRes %>%
+  group_by(NES_cat) %>% 
+  arrange(pval) %>% 
+  slice_head(n=20) %>% 
+  group_by(pathway) %>% 
+  
+  mutate(pathway_mod=
+           ifelse(length(strsplit(pathway, "")[[1]])>num,paste0(paste0((strsplit(pathway, ""))[[1]][1:num],collapse = ""), "..."),pathway))%>% 
+   ungroup()%>% 
+   arrange(pval) %>% 
+  mutate(pathway_mod=paste0(row_number(),":",pathway_mod))
+
+fgseaRes_graph <- fgseaRes_1 %>% 
     group_by(NES_cat) %>%
-      slice_head(n=10) %>% 
-    ggplot(aes(x = NES, y = fct_reorder(pathway, NES))) + 
-  geom_segment(aes(yend = pathway,colour = pval), xend = 0, size=3) +
-  geom_point(aes(color = pval),size = 5) +
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway_mod, NES))) + 
+    geom_segment(aes(yend = pathway_mod,colour = pval), xend = 0, size=3) +
+    geom_point(aes(color = pval),size = 5) +
     theme_bw(base_size = 15) +
-  theme(text = element_text(size=12))+
+    theme(text = element_text(size=12))+
     # scale_colour_gradient(limits=c(0, pvalue), low="red") +
     ylab(NULL)+
-    # ggtitle(paste0("First ",num_GO, " up & ", num_GO," down regulated specific GO"))+
     facet_grid(.~NES_cat,scales = "free")+
   scale_colour_continuous(low = "#f29191",
                          high = "#4ca4fc")
-
 fgseaRes_graph
 
 png(paste0(resultatsplots_t, "/hallmarks_median_quartile_graph.png"),width = 900,height = 600,res=100)
@@ -415,12 +417,12 @@ fgseaRes_graph
 dev.off()
 
 save(fgseaRes, file=paste0(resultatstaules_t, "/hallmarks_quartile_teixit"))
-write.csv(fgseaRes, file="./RESULTATS_GSE17891/TEIXIT/TAULES/hallmarks_quartile_teixit.csv") 
+write.csv(fgseaRes, file=paste0(resultatstaules_t, "/hallmarks_quartile_teixit.csv")) 
 
 
 ```
 
-### Hallmarks amb Entrez_ID
+### HALLMARKS amb Entrez_ID
 ```{r}
 geneList<-table_DEG_complete$logFC
 names(geneList)<-table_DEG_complete$Gene.ID
@@ -441,7 +443,6 @@ pathwaysH = split(x = msigdbr_df$entrez_gene, f = msigdbr_df$gs_name)
 length(pathwaysH)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 
-
 fgseaRes <- fgseaRes %>% 
   filter(pval<0.05)
 
@@ -450,29 +451,44 @@ unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
 
 fgseaRes<- fgseaRes %>% 
   select(-leadingEdge)
+```
 
+
+```{r}
+datatable_jm(fgseaRes)
+```
+
+
+```{r}
 # Representació gràfica 
-
-fgseaRes <- fgseaRes %>%
-  slice_head(n=20) %>% 
-  arrange(NES)
 
 fgseaRes <-
 fgseaRes %>% 
-  mutate(NES_cat=ifelse(NES<0,"Down","Up"))  
-  
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+num<-20
 
-fgseaRes_graph <- fgseaRes %>% 
+fgseaRes_1 <- fgseaRes %>%
+  group_by(NES_cat) %>% 
+  arrange(pval) %>% 
+  slice_head(n=20) %>% 
+  group_by(pathway) %>% 
+  
+  mutate(pathway_mod=
+           ifelse(length(strsplit(pathway, "")[[1]])>num,paste0(paste0((strsplit(pathway, ""))[[1]][1:num],collapse = ""), "..."),pathway))%>% 
+   ungroup()%>% 
+   arrange(pval) %>% 
+  mutate(pathway_mod=paste0(row_number(),":",pathway_mod))
+
+fgseaRes_graph <- fgseaRes_1 %>% 
     group_by(NES_cat) %>%
-      slice_head(n=10) %>% 
-    ggplot(aes(x = NES, y = fct_reorder(pathway, NES))) + 
-  geom_segment(aes(yend = pathway,colour = pval), xend = 0, size=3) +
-  geom_point(aes(color = pval),size = 5) +
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway_mod, NES))) + 
+    geom_segment(aes(yend = pathway_mod,colour = pval), xend = 0, size=3) +
+    geom_point(aes(color = pval),size = 5) +
     theme_bw(base_size = 15) +
-  theme(text = element_text(size=12))+
+    theme(text = element_text(size=12))+
     # scale_colour_gradient(limits=c(0, pvalue), low="red") +
     ylab(NULL)+
-    # ggtitle(paste0("First ",num_GO, " up & ", num_GO," down regulated specific GO"))+
     facet_grid(.~NES_cat,scales = "free")+
   scale_colour_continuous(low = "#f29191",
                          high = "#4ca4fc")
@@ -484,7 +500,335 @@ fgseaRes_graph
 dev.off()
 
 save(fgseaRes, file=paste0(resultatstaules_t, "/hallmarks_quartile_teixit_entrez_ID"))
-write.csv(fgseaRes, file="./RESULTATS_GSE17891/TEIXIT/TAULES/hallmarks_quartile_teixit_entrez_ID.csv") 
+write.csv(fgseaRes, file=paste0(resultatstaules_t, "/hallmarks_quartile_teixit_entrez_ID.csv")) 
+```
+
+
+### C2 subcategory CP:KEGG 
+```{r}
+# GeneList
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$Gene.symbol
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+
+msigdbr_df <- msigdbr(species = "human", category = "C2", subcategory = "CP:KEGG")
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+
+set.seed(123)
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+
+# run fgsea enrichment
+
+fgseaRes <- fgseaRes %>% 
+  arrange(pval) %>% 
+  filter(pval<=0.05)
+
+fgseaRes$leadingEdge_1<-
+unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
+
+fgseaRes<- fgseaRes %>% 
+  dplyr::select(-leadingEdge)
 
 
 ```
+
+```{r}
+datatable_jm(fgseaRes)
+```
+
+```{r}
+# Representació gràfica 
+
+fgseaRes <-
+fgseaRes %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+num<-20
+
+fgseaRes_1 <- fgseaRes %>%
+  group_by(NES_cat) %>% 
+  arrange(pval) %>% 
+  slice_head(n=20) %>% 
+  group_by(pathway) %>% 
+  
+  mutate(pathway_mod=
+           ifelse(length(strsplit(pathway, "")[[1]])>num,paste0(paste0((strsplit(pathway, ""))[[1]][1:num],collapse = ""), "..."),pathway))%>% 
+   ungroup()%>% 
+   arrange(pval) %>% 
+  mutate(pathway_mod=paste0(row_number(),":",pathway_mod))
+
+
+fgseaRes_graph <- fgseaRes_1 %>% 
+    group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway_mod, NES))) + 
+    geom_segment(aes(yend = pathway_mod,colour = pval), xend = 0, size=3) +
+    geom_point(aes(color = pval),size = 5) +
+    theme_bw(base_size = 15) +
+    theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+fgseaRes_graph
+
+png(paste0(resultatsplots_t, "/C2_KEGG_quartile_graph.png"),width = 900,height = 600,res=100)
+fgseaRes_graph
+dev.off()
+
+save(fgseaRes, file=paste0(resultatstaules_t, "/C2_KEGG_quartile"))
+write.csv(fgseaRes, file=paste0(resultatstaules_t, "/C2_KEGG_quartile.csv")) 
+
+```
+
+
+### C2 subcategory CP:REACTOME
+
+```{r}
+# GeneList
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$Gene.symbol
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+
+msigdbr_df <- msigdbr(species = "human", category = "C2", subcategory = "CP:REACTOME")
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+
+set.seed(123)
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+
+# run fgsea enrichment
+
+fgseaRes <- fgseaRes %>% 
+  filter(pval<0.05)
+
+fgseaRes$leadingEdge_1<-
+unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
+
+fgseaRes<- fgseaRes %>% 
+  select(-leadingEdge)
+```
+
+```{r}
+datatable_jm(fgseaRes)
+```
+
+```{r}
+# Representació gràfica 
+
+fgseaRes <-
+fgseaRes %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+
+num<-25
+
+fgseaRes_1 <- fgseaRes %>%
+  group_by(NES_cat) %>% 
+  arrange(pval) %>% 
+  slice_head(n=20) %>% 
+  group_by(pathway) %>% 
+  
+  mutate(pathway_mod=
+           ifelse(length(strsplit(pathway, "")[[1]])>num,paste0(paste0((strsplit(pathway, ""))[[1]][1:num],collapse = ""), "..."),pathway))%>% 
+   ungroup()%>% 
+   arrange(pval) %>% 
+  mutate(pathway_mod=paste0(row_number(),":",pathway_mod))
+
+fgseaRes_graph <- fgseaRes_1 %>% 
+    group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway_mod, NES))) + 
+    geom_segment(aes(yend = pathway_mod,colour = pval), xend = 0, size=3) +
+    geom_point(aes(color = pval),size = 5) +
+    theme_bw(base_size = 15) +
+    theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+fgseaRes_graph
+
+png(paste0(resultatsplots_t, "/C2_REACTOME_quartile_graph.png"),width = 900,height = 600,res=100)
+fgseaRes_graph
+dev.off()
+
+save(fgseaRes, file=paste0(resultatstaules_t, "/C2_REACTOME_quartile"))
+write.csv(fgseaRes, file=paste0(resultatstaules_t, "/C2_REACTOME_quartile.csv")) 
+
+```
+
+### C6: ONCOGENIC SIGNATURE 
+```{r}
+# GeneList
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$Gene.symbol
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+
+msigdbr_df <- msigdbr(species = "human", category = "C6")
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+
+set.seed(123)
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+
+# run fgsea enrichment
+
+fgseaRes <- fgseaRes %>% 
+  filter(pval<0.05)
+
+fgseaRes$leadingEdge_1<-
+unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
+
+fgseaRes<- fgseaRes %>% 
+  select(-leadingEdge)
+
+```
+
+```{r}
+datatable_jm(fgseaRes)
+```
+
+```{r}
+# Representació gràfica 
+
+fgseaRes <-
+fgseaRes %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+
+num<-20
+
+fgseaRes_1 <- fgseaRes %>%
+  group_by(NES_cat) %>% 
+  arrange(pval) %>% 
+  slice_head(n=20) %>% 
+  group_by(pathway) %>% 
+  
+  mutate(pathway_mod=
+           ifelse(length(strsplit(pathway, "")[[1]])>num,paste0(paste0((strsplit(pathway, ""))[[1]][1:num],collapse = ""), "..."),pathway))%>% 
+   ungroup()%>% 
+   arrange(pval) %>% 
+  mutate(pathway_mod=paste0(row_number(),":",pathway_mod))
+
+fgseaRes_graph <- fgseaRes_1 %>% 
+    group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway_mod, NES))) + 
+    geom_segment(aes(yend = pathway_mod,colour = pval), xend = 0, size=3) +
+    geom_point(aes(color = pval),size = 5) +
+    theme_bw(base_size = 15) +
+    theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+fgseaRes_graph
+
+
+png(paste0(resultatsplots_t, "/C6_oncogenic_quartile_graph.png"),width = 900,height = 600,res=100)
+fgseaRes_graph
+dev.off()
+
+save(fgseaRes, file=paste0(resultatstaules_t, "/C6_oncogenic_quartile"))
+write.csv(fgseaRes, file=paste0(resultatstaules_t, "/C6_oncogenic_quartile.csv")) 
+
+```
+
+### C7: IMMUNOGENIC SIGNATURE 
+```{r}
+# GeneList
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$Gene.symbol
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+
+msigdbr_df <- msigdbr(species = "human", category = "C7")
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+
+set.seed(123)
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+
+# run fgsea enrichment
+
+fgseaRes <- fgseaRes %>% 
+  filter(pval<0.05)
+
+fgseaRes$leadingEdge_1<-
+unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
+
+fgseaRes<- fgseaRes %>% 
+  select(-leadingEdge)
+```
+
+```{r}
+datatable_jm(fgseaRes)
+```
+
+```{r}
+# Representació gràfica 
+
+fgseaRes <-
+fgseaRes %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+
+num<-20
+
+fgseaRes_1 <- fgseaRes %>%
+  group_by(NES_cat) %>% 
+  arrange(pval) %>% 
+  slice_head(n=20) %>% 
+  group_by(pathway) %>% 
+  
+  mutate(pathway_mod=
+           ifelse(length(strsplit(pathway, "")[[1]])>num,paste0(paste0((strsplit(pathway, ""))[[1]][1:num],collapse = ""), "..."),pathway))%>% 
+   ungroup()%>% 
+   arrange(pval) %>% 
+  mutate(pathway_mod=paste0(row_number(),":",pathway_mod))
+
+fgseaRes_graph <- fgseaRes_1 %>% 
+    group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway_mod, NES))) + 
+    geom_segment(aes(yend = pathway_mod,colour = pval), xend = 0, size=3) +
+    geom_point(aes(color = pval),size = 5) +
+    theme_bw(base_size = 15) +
+    theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+fgseaRes_graph
+
+png(paste0(resultatsplots_t, "/C7_IMMUNOGENIC_quartile_graph.png"),width = 900,height = 600,res=100)
+fgseaRes_graph
+dev.off()
+
+save(fgseaRes, file=paste0(resultatstaules_t, "/C7_IMMUNOGENIC_quartile"))
+write.csv(fgseaRes, file=paste0(resultatstaules_t, "/C7_IMMUNOGENIC_quartile.csv")) 
+
+```
+
+
