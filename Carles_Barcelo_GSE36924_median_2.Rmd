@@ -304,7 +304,7 @@ datatable_jm(kegg_gsea_df_median_2, column = c("core_enrichment"))
 knitr::include_graphics("./RESULTATS_GSE36924//PLOTS/kegg_graph_median_2.png", dpi = 100)
 ```
 
-### HALLMARKS
+### HALLMARKS amb GeneSymbol 
 
 ```{r}
 library(msigdbr)
@@ -318,7 +318,7 @@ names(geneList)<-table_DEG_complete$Gene.symbol
 geneList<-geneList[order(geneList, decreasing = TRUE)]
 
 msigdbr_df <- msigdbr(species = "human", category = "H")
-colnames(msigdbr_df)
+# colnames(msigdbr_df)
 
 # fixing format to work with fgsea
 
@@ -328,7 +328,7 @@ pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
 
 set.seed(123)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
-data.frame(fgseaRes)
+# data.frame(fgseaRes)
 
 fgseaRes <- fgseaRes %>% 
   filter(pval<0.05)
@@ -338,7 +338,14 @@ unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
 
 fgseaRes<- fgseaRes %>% 
   select(-leadingEdge)
+```
 
+```{r}
+datatable_jm(fgseaRes)
+```
+
+
+```{r}
 # Representació gràfica 
 
 fgseaRes <- fgseaRes %>%
@@ -376,7 +383,7 @@ write.csv(fgseaRes, file="./RESULTATS_GSE36924/hallmarks_median_2.csv")
 
 ```
 
-### GeneList amb entrez_ID (Gene_ID)
+### HALLMARKS amb entrez_ID (Gene_ID)
 ```{r}
 # GeneList
 geneList<-table_DEG_complete$logFC
@@ -384,7 +391,7 @@ names(geneList)<-table_DEG_complete$Gene.ID
 geneList<-geneList[order(geneList, decreasing = TRUE)]
 
 msigdbr_df <- msigdbr(species = "human", category = "H")
-colnames(msigdbr_df)
+# colnames(msigdbr_df)
 
 # fixing format to work with fgsea
 
@@ -394,7 +401,6 @@ pathwaysH = split(x = msigdbr_df$entrez_gene, f = msigdbr_df$gs_name)
 
 set.seed(123)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
-data.frame(fgseaRes)
 
 fgseaRes <- fgseaRes %>% 
   filter(pval<0.05)
@@ -404,7 +410,14 @@ unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
 
 fgseaRes<- fgseaRes %>% 
   select(-leadingEdge)
+```
 
+```{r}
+datatable_jm(fgseaRes)
+```
+
+
+```{r}
 # Representació gràfica 
 
 fgseaRes <- fgseaRes %>%
@@ -439,5 +452,6 @@ dev.off()
 
 save(fgseaRes, file="./RESULTATS_GSE36924/hallmarks_median_2_graph_entrez_ID")
 write.csv(fgseaRes, file="./RESULTATS_GSE36924/hallmarks_median_2_graph_entrez_ID.csv") 
+
 
 ```

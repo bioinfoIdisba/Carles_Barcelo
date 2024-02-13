@@ -48,7 +48,7 @@ datatable(
 
 ```
 
-```{r eval=FALSE, include=TRUE}
+```{r include=FALSE}
 library(GEOquery)
 library(limma)
 library(umap)
@@ -89,7 +89,7 @@ boxplot(gset)
 
 
 # Normalització
-```{r eval=FALSE, include=TRUE}
+```{r include=FALSE}
 library(affyPLM)
 
 gset_norm <- normalize.ExpressionSet.quantiles(gset, transfn="none")
@@ -109,10 +109,10 @@ Es troben dos sondes que codifiquen per PLAC8 "ILMN_1653026" i "ILMN_2093343"
 ```{r}
 library(limma)
 ## Creació del grup en funció dels quartils de la segona sonda ILMN_2093343 
-
+matriu_exprs <- exprs(gset_norm)
 quartiles_2 <- quantile(matriu_exprs[gset_norm@featureData@data$ID[gset_norm@featureData@data$`Gene symbol`=="PLAC8"],][2,])
 
-matriu_exprs <- exprs(gset_norm)
+
 
 expressio_2<- exprs(gset_norm[gset_norm@featureData@data$ID=="ILMN_2093343",])
 
@@ -319,7 +319,7 @@ names(geneList)<-table_DEG_complete$Gene.symbol
 geneList<-geneList[order(geneList, decreasing = TRUE)]
 
 msigdbr_df <- msigdbr(species = "human", category = "H")
-colnames(msigdbr_df)
+# colnames(msigdbr_df)
 
 # fixing format to work with fgsea
 
@@ -329,7 +329,7 @@ pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
 
 set.seed(123)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
-data.frame(fgseaRes)
+
 
 fgseaRes <- fgseaRes %>% 
   filter(pval<0.05)
@@ -339,7 +339,14 @@ unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
 
 fgseaRes<- fgseaRes %>% 
   select(-leadingEdge)
+```
 
+```{r}
+datatable_jm(fgseaRes)
+```
+
+
+```{r}
 # Representació gràfica 
 
 fgseaRes <- fgseaRes %>%
@@ -377,7 +384,8 @@ write.csv(fgseaRes, file="./RESULTATS_GSE36924/hallmarks_quartile_2.csv")
 
 ```
 
-### GeneList amb entrez_ID (Gene_ID)
+### HALLMARKS amb entrez_ID (Gene_ID)
+
 ```{r}
 # GeneList
 geneList<-table_DEG_complete$logFC
@@ -385,7 +393,7 @@ names(geneList)<-table_DEG_complete$Gene.ID
 geneList<-geneList[order(geneList, decreasing = TRUE)]
 
 msigdbr_df <- msigdbr(species = "human", category = "H")
-colnames(msigdbr_df)
+# colnames(msigdbr_df)
 
 # fixing format to work with fgsea
 
@@ -395,7 +403,7 @@ pathwaysH = split(x = msigdbr_df$entrez_gene, f = msigdbr_df$gs_name)
 
 set.seed(123)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
-data.frame(fgseaRes)
+
 
 fgseaRes <- fgseaRes %>% 
   filter(pval<0.05)
@@ -405,7 +413,14 @@ unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
 
 fgseaRes<- fgseaRes %>% 
   select(-leadingEdge)
+```
 
+```{r}
+datatable_jm(fgseaRes)
+```
+
+
+```{r}
 # Representació gràfica 
 
 fgseaRes <- fgseaRes %>%

@@ -323,7 +323,7 @@ datatable_jm(kegg_gsea_df_median, column = c("core_enrichment"))
 knitr::include_graphics(paste0(resultatsplots_t, "/kegg_graph_median.png"), dpi = 100)
 ```
 
-### HALLMARKS
+### HALLMARKS amb Gene Symbol
 
 ```{r}
 library(msigdbr)
@@ -338,7 +338,7 @@ geneList<-geneList[order(geneList, decreasing = TRUE)]
 
 
 msigdbr_df <- msigdbr(species = "human", category = "H")
-colnames(msigdbr_df)
+
 
 # fixing format to work with fgsea
 
@@ -348,7 +348,7 @@ pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
 
 set.seed(123)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
-data.frame(fgseaRes)
+
 
 fgseaRes <- fgseaRes %>% 
   filter(pval<0.05)
@@ -396,7 +396,8 @@ write.csv(fgseaRes, file=paste0(resultatstaules_t, "/hallmarks_median_teixit.csv
 
 ```
 
-### GeneList amb entrez_ID (Gene_ID)
+### HALLMARKS amb entrez_ID (Gene_ID)
+
 ```{r}
 # GeneList
 geneList<-table_DEG_complete$logFC
@@ -404,7 +405,7 @@ names(geneList)<-table_DEG_complete$Gene.ID
 geneList<-geneList[order(geneList, decreasing = TRUE)]
 
 msigdbr_df <- msigdbr(species = "human", category = "H")
-colnames(msigdbr_df)
+
 
 # fixing format to work with fgsea
 
@@ -414,7 +415,7 @@ pathwaysH = split(x = msigdbr_df$entrez_gene, f = msigdbr_df$gs_name)
 
 set.seed(123)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
-data.frame(fgseaRes)
+
 
 fgseaRes <- fgseaRes %>% 
   filter(pval<0.05)

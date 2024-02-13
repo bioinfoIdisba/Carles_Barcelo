@@ -78,7 +78,6 @@ library(umap)
 gset <- getGEO("GSE17891", GSEMatrix =TRUE, AnnotGPL=TRUE)
 
 ## check how many platforms used
-length(gset)
 ## if more than one dataset is present, you can analyse the other dataset by changing the number inside the [[...]]
 head(gset[[1]]@phenoData@data)
 
@@ -364,7 +363,6 @@ geneList<-table_DEG_complete$logFC
 names(geneList)<-table_DEG_complete$Gene.ID
 
 msigdbr_df <- msigdbr(species = "human", category = "H")
-colnames(msigdbr_df)
 
 # fixing format to work with fgsea
 
@@ -430,7 +428,7 @@ geneList<-table_DEG_complete$logFC
 names(geneList)<-table_DEG_complete$Gene.symbol
 
 msigdbr_df <- msigdbr(species = "human", category = "H")
-colnames(msigdbr_df)
+
 
 # fixing format to work with fgsea
 
@@ -438,14 +436,12 @@ pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
 
 # run fgsea enrichment
 set.seed(123)
-length(pathwaysH)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 fgseaRes <- data.frame(fgseaRes)
 
 fgseaRes <- fgseaRes %>% 
   filter(pval<0.05)
 
-class(fgseaRes$leadingEdge)
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
 

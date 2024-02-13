@@ -362,7 +362,7 @@ geneList<-geneList[order(geneList, decreasing = TRUE)]
 
 set.seed(123)
 msigdbr_df <- msigdbr(species = "human", category = "H")
-colnames(msigdbr_df)
+
 
 # fixing format to work with fgsea
 
@@ -372,7 +372,6 @@ pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
 
 length(pathwaysH)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
-data.frame(fgseaRes)
 
 fgseaRes <- fgseaRes %>% 
   filter(pval<0.05)
@@ -431,7 +430,7 @@ geneList<-geneList[order(geneList, decreasing = TRUE)]
 
 set.seed(123)
 msigdbr_df <- msigdbr(species = "human", category = "H")
-colnames(msigdbr_df)
+
 
 # fixing format to work with fgsea
 
@@ -441,7 +440,7 @@ pathwaysH = split(x = msigdbr_df$entrez_gene, f = msigdbr_df$gs_name)
 
 length(pathwaysH)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
-data.frame(fgseaRes)
+
 
 fgseaRes <- fgseaRes %>% 
   filter(pval<0.05)
