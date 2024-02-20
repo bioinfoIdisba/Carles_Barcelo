@@ -66,7 +66,7 @@ library(rrvgo)
 ```
 
 
-```{r eval=FALSE}
+```{r include=FALSE}
 # Differential expression analysis with limma
 library(GEOquery)
 library(limma)
@@ -163,7 +163,6 @@ table_DEG_quartil <- topTable(data.fit.eb, number = Inf,adjust.method = "fdr",ge
 
 table_DEG_sig_quartil <-table_DEG_quartil %>% 
   filter(adj.P.Val<=0.05)
-dim(table_DEG_sig_quartil)
 
 save(table_DEG_quartil, file=paste0(resultatstaules_t, "/table_DEG_quartil"))
 save(table_DEG_sig_quartil, file=paste0(resultatstaules_t, "/table_DEG_sig_quartil"))
@@ -220,7 +219,7 @@ load(paste0(resultatsobjectes_t, "/GO_gsea"))
 
 GO_gsea_df<-GO_gsea@result
 GO_gsea_df<-GO_gsea@result %>%
-  filter(p.adjust<=0.05)
+  filter(p.adjust<=0.25)
 
 
 num_gens <-unlist(lapply(GO_gsea_df$core_enrichment, function(x) sum(table_DEG_complete$Gene.symbol%in%strsplit(x ,"/")[[1]]) ))
@@ -270,25 +269,15 @@ kegg_gsea <- gseKEGG(geneList     = geneList,
 
 kegg_gsea <- setReadable(kegg_gsea, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
 
-save(kegg_gsea,file = paste0(resultatsobjectes_t, "/kegg_gsea_quartile"))
-```
-
-
-```{r}
-load(paste0(resultatsobjectes_t, "/kegg_gsea_quartile"))
-
 kegg_gsea_df<-kegg_gsea@result
 kegg_gsea_df<-kegg_gsea@result %>%
-  filter(p.adjust<=0.05) 
+  filter(p.adjust<=0.25) 
 
-# kegg_gsea_df<-kegg_gsea_df[grepl(keys,kegg_gsea@result$Description,ignore.case = T),]
-
-num_gens<-unlist(lapply(kegg_gsea_df$core_enrichment, function(x) sum(table_DEG_complete$Gene.symbol%in%strsplit(x ,"/")[[1]]) ))
-name_gens<-unlist(lapply(kegg_gsea_df$core_enrichment, function(x) paste(table_DEG_complete$Gene.symbol[(table_DEG_complete$Gene.symbol%in%strsplit(x,"/")[[1]])],collapse = "/") ))
+num_gens<-unlist(lapply(kegg_gsea_df$core_enrichment, function(x) sum(table_DEG_complete$genel%in%strsplit(x ,"/")[[1]]) ))
+name_gens<-unlist(lapply(kegg_gsea_df$core_enrichment, function(x) paste(table_DEG_complete$symbol[(table_DEG_complete$symbol%in%strsplit(x,"/")[[1]])],collapse = "/") ))
 
 kegg_gsea_df$num_gens<-num_gens
 kegg_gsea_df$name_gens<-name_gens
-
 kegg_gsea_df<-
 kegg_gsea_df %>% 
   mutate(NES_cat=ifelse(NES<0,"Down","Up"))
@@ -363,7 +352,7 @@ length(pathwaysH)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 
 fgseaRes <- fgseaRes %>% 
-  filter(pval<0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
@@ -375,7 +364,6 @@ fgseaRes<- fgseaRes %>%
 ```{r}
 datatable_jm(fgseaRes)
 ```
-
 
 ```{r}
 # Representació gràfica 
@@ -444,7 +432,7 @@ length(pathwaysH)
 fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 
 fgseaRes <- fgseaRes %>% 
-  filter(pval<0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
@@ -526,7 +514,7 @@ fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 
 fgseaRes <- fgseaRes %>% 
   arrange(pval) %>% 
-  filter(pval<=0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
@@ -610,7 +598,7 @@ fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 # run fgsea enrichment
 
 fgseaRes <- fgseaRes %>% 
-  filter(pval<0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
@@ -690,7 +678,7 @@ fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 # run fgsea enrichment
 
 fgseaRes <- fgseaRes %>% 
-  filter(pval<0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
@@ -772,7 +760,7 @@ fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 # run fgsea enrichment
 
 fgseaRes <- fgseaRes %>% 
-  filter(pval<0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))

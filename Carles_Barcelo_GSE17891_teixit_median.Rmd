@@ -154,7 +154,7 @@ data.fit.eb = eBayes(data.fit.con)
 table_DEG_median <- topTable(data.fit.eb, number = Inf,adjust.method = "fdr",genelist = gset@featureData@data)
 
 table_DEG_sig_median <- table_DEG_median %>%
-                   filter(adj.P.Val<=0.05)
+                   filter(adj.P.Val<=0.25)
 
 dim(table_DEG_sig_median)
 
@@ -215,7 +215,7 @@ load(paste0(resultatsobjectes_t, "/GO_gsea"))
 
 GO_gsea_df<-GO_gsea@result
 GO_gsea_df<-GO_gsea@result %>%
-  filter(p.adjust<=0.05)
+  filter(p.adjust<=0.25)
 
 table_DEG_complete<-
   table_DEG_median[table_DEG_median$Gene.ID!="",]
@@ -275,7 +275,7 @@ load(paste0(resultatsobjectes_t, "/kegg_gsea_median"))
 
 kegg_gsea_df<-kegg_gsea@result
 kegg_gsea_df<-kegg_gsea@result %>%
-  filter(p.adjust<=0.05) 
+  filter(p.adjust<=0.25) 
 
 num_gens<-unlist(lapply(kegg_gsea_df$core_enrichment, function(x) sum(table_DEG_complete$Gene.symbol%in%strsplit(x ,"/")[[1]]) ))
 name_gens<-unlist(lapply(kegg_gsea_df$core_enrichment, function(x) paste(table_DEG_complete$Gene.symbol[(table_DEG_complete$Gene.symbol%in%strsplit(x,"/")[[1]])],collapse = "/") ))
@@ -352,7 +352,7 @@ fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 
 
 fgseaRes <- fgseaRes %>% 
-  filter(pval<0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
@@ -433,7 +433,7 @@ fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 
 
 fgseaRes <- fgseaRes %>% 
-  filter(pval<0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
@@ -517,7 +517,7 @@ fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 
 fgseaRes <- fgseaRes %>% 
   arrange(pval) %>% 
-  filter(pval<=0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
@@ -601,7 +601,7 @@ fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 # run fgsea enrichment
 
 fgseaRes <- fgseaRes %>% 
-  filter(pval<0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
@@ -681,7 +681,7 @@ fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 # run fgsea enrichment
 
 fgseaRes <- fgseaRes %>% 
-  filter(pval<0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
@@ -763,7 +763,7 @@ fgseaRes <- fgsea(pathways=pathwaysH, geneList)
 # run fgsea enrichment
 
 fgseaRes <- fgseaRes %>% 
-  filter(pval<0.05)
+  filter(padj<=0.25)
 
 fgseaRes$leadingEdge_1<-
 unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
