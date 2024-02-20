@@ -1,0 +1,827 @@
+---
+title: "Dataset E-MTAB-6134"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    theme: flatly
+    highlight: kate
+    code_folding: hide
+  pdf_document:
+    toc: yes
+editor_options:
+  
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+ID <- "E-MTAB-6134"
+carpeta <- paste0("./RESULTATS_",ID)
+dir.create(carpeta)
+
+resultatsplots <- paste0(carpeta,"/","PLOTS")
+resultatstaules <- paste0(carpeta,"/","TAULES")
+resultatsobjectes <- paste0(carpeta,"/","OBJECTES_R")
+
+dir.create(resultatsplots)
+dir.create(resultatstaules)
+dir.create(resultatsobjectes)
+
+```
+
+```{r include=FALSE}
+## Global options
+
+source("/usr/local/lib/R/site-library/AnalisisArrays2/templates/llibreries_Informes.R")
+knitr::opts_chunk$set(warning = F,message = F,class.source = "watch-out")
+
+library(oligo)
+library(DT)
+library(clusterProfiler)
+library(genefilter)
+library(dplyr)
+library(rrvgo)
+
+datatable_jm<-function(x,column=NULL){
+datatable(
+  x,
+  extensions = 'Buttons',
+  filter = list(position = 'top', clear = T),
+  options = list(dom = 'Blfrtip',
+                 scrollX = TRUE, scrollCollapse = TRUE,
+                 # buttons = list(list(extend = 'colvis')),
+                 buttons = list(list(extend = 'colvis'),'copy', 'print',
+                                list(extend = 'collection',
+                                     buttons = c('csv', 'excel', 'pdf'),
+                                     text = 'Download')),
+                 columnDefs = list(list(visible=FALSE, targets=column))))}
+
+```
+
+
+```{r}
+# Carreguem el raw dataset que conté els celfiles d'interès amb la funció ArrayExpress.
+library(ArrayExpress)
+rawset <- ArrayExpress("E-MTAB-6134")
+
+# Control de qualitat
+  ## Boxplot raw data
+    boxplot(rawset,las=2,main="data_raw",xaxt="n")
+
+# library(arrayQualityMetrics)
+# arrayQualityMetrics(expressionset = data_raw_serum,
+#                     outdir = "Report_for_notlog",
+#                     force = TRUE,
+#                     do.logtransform = FALSE)
+
+
+# If rawset is an Affymetrix experiment, we can use RMA normalisation to process the raw data.
+library(oligo)
+rawset_norm <- oligo::rma(rawset)
+
+    ## Boxplot norm data
+    boxplot_rawset_norm <- boxplot(rawset_norm,las=2,main="data_raw_norm",xaxt="n")
+    
+    png(paste0(resultatsplots, "/boxplot_rawset_norm.png"),width = 900,height = 600,res=100)
+    boxplot_rawset_norm
+    dev.off()
+
+save(rawset, file= paste0(resultatsobjectes,"/rawset"))
+save(rawset_norm, file= paste0(resultatsobjectes,"/rawset_norm"))
+
+rawset_norm
+```
+
+Boxplot de totes les mostres del dataset (normalitzades)
+```{r}
+knitr::include_graphics(paste0(resultatsplots, "/boxplot_rawset_norm.png"), dpi = 100)
+```
+
+```{r eval=FALSE}
+# Obtenir phenoData
+annotate <-read.csv("/home/SHARED/annotation_affymetrix/pd.clariom.s.human.csv",sep=",",comment.char = "#")
+colnames(annotate) 
+
+annotate$gene_assignment[1]
+annotate$gene_symbol<-unlist(lapply(annotate$gene_assignment, function(x) gsub(" ","",strsplit(x,"//")[[1]][2])))
+annotate$gene_symbol[1]
+annotate$gene_entrez<-unlist(lapply(annotate$gene_assignment, function(x) gsub(" ","",strsplit(x,"//")[[1]][5])))
+colnames(annotate)
+annotate<-annotate[,c(1:3,17,18,22:23)]
+
+# Creem una matriu que ens uneixi el phenoData de raw amb el FeatureData mitjançant el nom del probeset. 
+
+rawset_norm@phenoData@data
+
+head(annotate)
+fd <-annotate[match(rownames(rawset_norm),annotate$transcript_cluster_id),]
+
+# Convertim el featureData en un annotated dataframe
+featureData <- new("AnnotatedDataFrame", data=fd)
+# Carreguem el featureData al expresionset de data_rma_biopsia
+featureData(rawset_norm)<- featureData
+# featureData_biopsia <-data_rma_biopsia@featureData@data
+
+# data_rma_biopsia_RNA_anno <- data_rma_biopsia_RNA
+# #Ho guardo com data_rma_biopsia_RNA_anno per diferenciar-ho del data_rma sense l'annotate
+
+save(data_rma_biopsia_RNA,file="./RESULTATS/OBJECTES_R/data_rma_biopsia_RNA")
+```
+
+
+```{r eval=FALSE}
+# Differential expression analysis with limma
+  
+library(limma)
+rawset_norm@featureData@data
+
+
+# Expressió de PLAC8
+
+matriu_exprs <- exprs(rawset_norm) 
+matriu_exprs
+median <- median(matriu_exprs[gset@featureData@data$ID[gset@featureData@data$`Gene symbol`=="PLAC8"],])
+
+
+```
+
+
+
+# Anàlisi mostres
+
+```{r echo=TRUE}
+load(paste0(resultatsobjectes, "/gset"))
+
+#Revisar amb en Josep el tipus de mostres, he agafat el teixit Pancreas_Primary
+
+gset<-gset[,grep("Pancreas_P", gset@phenoData@data$source_name_ch2)]
+
+# sum(grepl("PLAC8",gset@featureData@data$ID,ignore.case = T))
+# table(gset@featureData@data$ID[(grep("PLAC8",gset@featureData@data$ID,ignore.case = T))])
+
+boxplot(gset)  
+
+# grep("PLAC8",gset@featureData@data$ID,ignore.case = T)
+# datatable(gset@featureData@data[13450,])
+
+```
+
+# Normalització
+Es normalitzen les dades
+```{r eval=FALSE, include=TRUE}
+library(affyPLM)
+gset_norm <-normalize.ExpressionSet.quantiles(gset, transfn="none")
+
+save(gset_norm,file= paste0(resultatsobjectes, "/gset_norm"))
+
+```
+
+# Expressió de PLAC8
+Boxplot de les dades normalitzades 
+```{r}
+load(paste0(resultatsobjectes, "/gset_norm"))
+
+matriu_exprs <- exprs(gset_norm) 
+boxplot(gset_norm, las=2)
+```
+
+
+# Expressió diferencial grups (high/low expression PLAC8)
+Es realitza l'expressió diferencial en funció de la mediana o els quartils Q1 vs Q4 de l'expressió de PLAC8 
+
+## Median 
+```{r}
+library(clusterProfiler)
+library(genefilter)
+library(dplyr)
+library(limma)
+
+median <- median(matriu_exprs[gset_norm@featureData@data$ID[gset_norm@featureData@data$ID=="PLAC8"],])
+
+gset_norm@phenoData@data$gmedian <-
+unlist(as.list(exprs(gset_norm[gset_norm@featureData@data$ID=="PLAC8",])>median))
+
+## Control vs Caso
+
+groups = gset_norm@phenoData@data$gmedian
+groups<-gsub("FALSE","LOW",groups)
+groups<-gsub("TRUE","HIGH",groups)
+groups<-as.factor(groups)
+
+design = model.matrix(~ 0 + groups)
+colnames(design)<-gsub("groups","",colnames(design))
+
+data.fit = lmFit(matriu_exprs,design)
+
+contrast.matrix = makeContrasts(LOW-HIGH,levels=design)
+data.fit.con = contrasts.fit(data.fit,contrast.matrix)
+data.fit.eb = eBayes(data.fit.con)
+
+table_DEG_median <- topTable(data.fit.eb, number = Inf,adjust.method = "fdr",genelist = gset_norm@featureData@data)
+
+# dim(table_DEG_median)
+
+table_DEG_sig_median <- table_DEG_median %>%
+                   filter(adj.P.Val<=0.05)
+
+dim(table_DEG_sig_median)
+
+save(table_DEG_median, file= paste0(resultatstaules,"/table_DEG_median"))
+save(table_DEG_sig_median, file= paste0(resultatstaules, "/table_DEG_sig_median"))
+```
+
+Taula de gens diferencialment expressats significatius (4702 gens)
+```{r}
+load(paste0(resultatstaules,"/table_DEG_sig_median"))
+
+datatable_jm(table_DEG_sig_median)
+             # column = c("GO.Process", "GO.Function","GO.Process.ID", "GO.Function.ID"))
+
+```
+
+
+### GO_GSEA
+```{r}
+load(paste0(resultatstaules,"/table_DEG_sig_median"))
+load(paste0(resultatstaules,"/table_DEG_median"))
+
+# GO GSEA
+
+library(org.Hs.eg.db)
+library(clusterProfiler)
+
+table_DEG_complete<-
+  table_DEG_median[table_DEG_median$ID!="",]
+
+table_DEG_complete<-
+table_DEG_complete %>% 
+  group_by(ID) %>% 
+    filter(adj.P.Val==min(adj.P.Val))
+
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$ID
+
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+
+set.seed(123)
+GO_gsea <- gseGO(geneList     = geneList, keyType = "SYMBOL",
+              OrgDb        = org.Hs.eg.db,
+              ont          = "BP",
+                # minGSSize    = 100,
+                # maxGSSize    = 500,
+              pvalueCutoff = 0.05,
+              verbose      = T
+              )
+
+# GO_gsea
+GO_gsea <- setReadable(GO_gsea, OrgDb = org.Hs.eg.db, keyType="SYMBOL")
+
+save(GO_gsea, file= paste0(resultatsobjectes,"/GO_gsea_median"))
+```
+
+
+```{r}
+load(paste0(resultatstaules,"/table_DEG_sig_median"))
+load(paste0(resultatstaules,"/table_DEG_median"))
+load(paste0(resultatsobjectes,"/GO_gsea_median"))
+# reducedTerms
+
+GO_gsea_df<-GO_gsea@result
+GO_gsea_df<-GO_gsea@result %>%
+  filter(p.adjust<=0.05)
+
+table_DEG_complete<-
+  table_DEG_median[table_DEG_median$ID!="",]
+
+save(table_DEG_complete, file = paste0(resultatstaules,"/table_DEG_complete"))
+
+num_gens <-unlist(lapply(GO_gsea_df$core_enrichment, function(x) sum(table_DEG_complete$symbol%in%strsplit(x ,"/")[[1]]) ))
+name_gens <-unlist(lapply(GO_gsea_df$core_enrichment, function(x) paste(table_DEG_complete$symbol[(table_DEG_complete$symbol%in%strsplit(x,"/")[[1]])],collapse = "/") ))
+
+GO_gsea_df$num_gens<-num_gens
+GO_gsea_df$name_gens<-name_gens
+
+library(rrvgo)
+
+simMatrix <- calculateSimMatrix(GO_gsea_df$ID,
+                                orgdb="org.Hs.eg.db",
+                                ont="BP",
+                                method="Rel")
+
+scores <- setNames(-log10(GO_gsea_df$qvalue), GO_gsea_df$ID)
+
+reducedTerms_median <- reduceSimMatrix(simMatrix,
+                                scores,
+                                threshold=0.7,
+                                orgdb="org.Hs.eg.db")
+
+png(paste0(resultatsplots, "/treemapplot_median.png"),width = 900,height = 600,res=100)
+treemapPlot(reducedTerms_median)
+dev.off()
+```
+
+```{r}
+knitr::include_graphics(paste0(resultatsplots, "/treemapplot_median.png"), dpi = 100)
+```
+
+### KEGG GSEA
+
+```{r}
+gene_enetrezID <- bitr(table_DEG_complete$ID, fromType = "SYMBOL", toType = "ENTREZID",OrgDb = "org.Hs.eg.db")
+
+table_DEG_complete$ENTREZID<-gene_enetrezID$ENTREZID[match(table_DEG_complete$ID,gene_enetrezID$SYMBOL)]
+
+```
+
+```{r}
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$ENTREZID
+
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+set.seed(123)
+kegg_gsea <- gseKEGG(geneList     = geneList,
+               organism     = 'hsa',
+               # minGSSize    = 120,
+               pvalueCutoff = 0.05,
+               verbose      = FALSE
+               )
+
+kegg_gsea <- setReadable(kegg_gsea, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
+
+save(kegg_gsea,file = paste0(resultatsobjectes, "/kegg_gsea_median"))
+```
+
+```{r}
+load(paste0(resultatsobjectes, "/kegg_gsea_median"))
+
+kegg_gsea_df<-kegg_gsea@result
+kegg_gsea_df<-kegg_gsea@result %>%
+  filter(p.adjust<=0.05) 
+
+# kegg_gsea_df<-kegg_gsea_df[grepl(keys,kegg_gsea@result$Description,ignore.case = T),]
+
+num_gens<-unlist(lapply(kegg_gsea_df$core_enrichment, function(x) sum(table_DEG_complete$Gene.symbol%in%strsplit(x ,"/")[[1]]) ))
+name_gens<-unlist(lapply(kegg_gsea_df$core_enrichment, function(x) paste(table_DEG_complete$Gene.symbol[(table_DEG_complete$Gene.symbol%in%strsplit(x,"/")[[1]])],collapse = "/") ))
+
+kegg_gsea_df$num_gens<-num_gens
+kegg_gsea_df$name_gens<-name_gens
+
+kegg_gsea_df<-
+kegg_gsea_df %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+
+kegg_gsea_df_p<-kegg_gsea_df %>%
+  group_by(NES_cat) %>% 
+  arrange(pvalue) %>%  
+  slice_head(n=20)
+
+kegg_graph <- kegg_gsea_df_p %>% group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(Description, NES))) + 
+  geom_segment(aes(yend = Description,colour = p.adjust), xend = 0, size=3) +
+  geom_point(aes(color = p.adjust),size = 5) +
+    theme_bw(base_size = 15) +
+  theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    # ggtitle(paste0("First ",num_GO, " up & ", num_GO," down regulated specific GO"))+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+kegg_gsea_df_median <- kegg_gsea_df
+
+png(paste0(resultatsplots, "/kegg_graph_median.png"),width = 900,height = 600,res=100)
+kegg_graph
+dev.off()
+
+save(kegg_gsea_df_median,file = paste0(resultatstaules, "/kegg_gsea_df_median"))
+
+```
+
+```{r}
+datatable_jm(kegg_gsea_df_median, column = c("core_enrichment"))
+
+```
+
+```{r}
+knitr::include_graphics(paste0(resultatsplots, "/kegg_graph_median.png"), dpi = 100)
+```
+
+
+### HALLMARKS amb Gene Symbol
+
+```{r}
+library(msigdbr)
+library(fgsea)
+```
+
+```{r}
+# GeneList
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$ID
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+
+
+msigdbr_df <- msigdbr(species = "human", category = "H")
+
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+
+set.seed(123)
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+
+
+fgseaRes <- fgseaRes %>% 
+  filter(pval<0.05)
+
+fgseaRes$leadingEdge_1<-
+unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
+
+fgseaRes<- fgseaRes %>% 
+  select(-leadingEdge)
+```
+
+```{r}
+datatable_jm(fgseaRes)
+```
+
+
+```{r}
+# Representació gràfica 
+
+fgseaRes <-
+fgseaRes %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+
+num<-20
+
+fgseaRes_1 <- fgseaRes %>%
+  group_by(NES_cat) %>% 
+  arrange(pval) %>% 
+  slice_head(n=20) %>% 
+  group_by(pathway) %>% 
+  
+  mutate(pathway_mod=
+           ifelse(length(strsplit(pathway, "")[[1]])>num,paste0(paste0((strsplit(pathway, ""))[[1]][1:num],collapse = ""), "..."),pathway))%>% 
+   ungroup()%>% 
+   arrange(pval) %>% 
+  mutate(pathway_mod=paste0(row_number(),":",pathway_mod))
+
+fgseaRes_graph <- fgseaRes_1 %>% 
+    group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway_mod, NES))) + 
+    geom_segment(aes(yend = pathway_mod,colour = pval), xend = 0, size=3) +
+    geom_point(aes(color = pval),size = 5) +
+    theme_bw(base_size = 15) +
+    theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+fgseaRes_graph
+
+
+png(paste0(resultatsplots, "/hallmarks_median_graph.png"),width = 900,height = 600,res=100)
+fgseaRes_graph
+dev.off()
+
+save(fgseaRes, file=paste0(resultatstaules, "/hallmarks_median"))
+write.csv(fgseaRes, file=paste0(resultatstaules, "/hallmarks_median.csv")) 
+
+```
+
+### C2 subcategory CP:KEGG
+```{r}
+# GeneList
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$ID
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+
+msigdbr_df <- msigdbr(species = "human", category = "C2", subcategory = "CP:KEGG")
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+
+set.seed(123)
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+
+# run fgsea enrichment
+
+fgseaRes <- fgseaRes %>% 
+  arrange(pval) %>% 
+  filter(pval<=0.05)
+
+fgseaRes$leadingEdge_1<-
+unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
+
+fgseaRes<- fgseaRes %>% 
+  dplyr::select(-leadingEdge)
+
+
+```
+
+```{r}
+datatable_jm(fgseaRes)
+```
+
+```{r}
+# Representació gràfica 
+
+fgseaRes <-
+fgseaRes %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+num<-20
+
+fgseaRes_1 <- fgseaRes %>%
+  group_by(NES_cat) %>% 
+  arrange(pval) %>% 
+  slice_head(n=20) %>% 
+  group_by(pathway) %>% 
+  
+  mutate(pathway_mod=
+           ifelse(length(strsplit(pathway, "")[[1]])>num,paste0(paste0((strsplit(pathway, ""))[[1]][1:num],collapse = ""), "..."),pathway))%>% 
+   ungroup()%>% 
+   arrange(pval) %>% 
+  mutate(pathway_mod=paste0(row_number(),":",pathway_mod))
+
+
+fgseaRes_graph <- fgseaRes_1 %>% 
+    group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway_mod, NES))) + 
+    geom_segment(aes(yend = pathway_mod,colour = pval), xend = 0, size=3) +
+    geom_point(aes(color = pval),size = 5) +
+    theme_bw(base_size = 15) +
+    theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+fgseaRes_graph
+
+png(paste0(resultatsplots, "/C2_KEGG_median_graph.png"),width = 900,height = 600,res=100)
+fgseaRes_graph
+dev.off()
+
+save(fgseaRes, file=paste0(resultatstaules, "/C2_KEGG_median"))
+write.csv(fgseaRes, file=paste0(resultatstaules, "/C2_KEGG_median.csv")) 
+
+```
+
+
+### C2 subcategory CP:REACTOME
+
+```{r}
+# GeneList
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$ID
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+
+msigdbr_df <- msigdbr(species = "human", category = "C2", subcategory = "CP:REACTOME")
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+
+set.seed(123)
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+
+# run fgsea enrichment
+
+fgseaRes <- fgseaRes %>% 
+  filter(pval<0.05)
+
+fgseaRes$leadingEdge_1<-
+unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
+
+fgseaRes<- fgseaRes %>% 
+  select(-leadingEdge)
+```
+
+```{r}
+datatable_jm(fgseaRes)
+```
+
+```{r}
+# Representació gràfica 
+
+fgseaRes <-
+fgseaRes %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+
+num<-25
+
+fgseaRes_1 <- fgseaRes %>%
+  group_by(NES_cat) %>% 
+  arrange(pval) %>% 
+  slice_head(n=20) %>% 
+  group_by(pathway) %>% 
+  
+  mutate(pathway_mod=
+           ifelse(length(strsplit(pathway, "")[[1]])>num,paste0(paste0((strsplit(pathway, ""))[[1]][1:num],collapse = ""), "..."),pathway))%>% 
+   ungroup()%>% 
+   arrange(pval) %>% 
+  mutate(pathway_mod=paste0(row_number(),":",pathway_mod))
+
+fgseaRes_graph <- fgseaRes_1 %>% 
+    group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway_mod, NES))) + 
+    geom_segment(aes(yend = pathway_mod,colour = pval), xend = 0, size=3) +
+    geom_point(aes(color = pval),size = 5) +
+    theme_bw(base_size = 15) +
+    theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+fgseaRes_graph
+
+png(paste0(resultatsplots, "/C2_KEGG_median_graph.png"),width = 900,height = 600,res=100)
+fgseaRes_graph
+dev.off()
+
+save(fgseaRes, file=paste0(resultatstaules, "/C2_KEGG_median"))
+write.csv(fgseaRes, file=paste0(resultatstaules, "/C2_KEGG_median.csv")) 
+
+```
+
+### C6: ONCOGENIC SIGNATURE 
+```{r}
+# GeneList
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$ID
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+
+msigdbr_df <- msigdbr(species = "human", category = "C6")
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+
+set.seed(123)
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+
+# run fgsea enrichment
+
+fgseaRes <- fgseaRes %>% 
+  filter(pval<0.05)
+
+fgseaRes$leadingEdge_1<-
+unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
+
+fgseaRes<- fgseaRes %>% 
+  select(-leadingEdge)
+
+```
+
+```{r}
+datatable_jm(fgseaRes)
+```
+
+```{r}
+# Representació gràfica 
+
+fgseaRes <-
+fgseaRes %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+
+num<-20
+
+fgseaRes_1 <- fgseaRes %>%
+  group_by(NES_cat) %>% 
+  arrange(pval) %>% 
+  slice_head(n=20) %>% 
+  group_by(pathway) %>% 
+  
+  mutate(pathway_mod=
+           ifelse(length(strsplit(pathway, "")[[1]])>num,paste0(paste0((strsplit(pathway, ""))[[1]][1:num],collapse = ""), "..."),pathway))%>% 
+   ungroup()%>% 
+   arrange(pval) %>% 
+  mutate(pathway_mod=paste0(row_number(),":",pathway_mod))
+
+fgseaRes_graph <- fgseaRes_1 %>% 
+    group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway_mod, NES))) + 
+    geom_segment(aes(yend = pathway_mod,colour = pval), xend = 0, size=3) +
+    geom_point(aes(color = pval),size = 5) +
+    theme_bw(base_size = 15) +
+    theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+fgseaRes_graph
+
+
+png(paste0(resultatsplots, "/C6_oncogenic_median_graph.png"),width = 900,height = 600,res=100)
+fgseaRes_graph
+dev.off()
+
+save(fgseaRes, file=paste0(resultatstaules, "/C6_oncogenic_median"))
+write.csv(fgseaRes, file=paste0(resultatstaules, "/C6_oncogenic_median.csv")) 
+
+```
+
+### C7: IMMUNOGENIC SIGNATURE 
+```{r}
+# GeneList
+geneList<-table_DEG_complete$logFC
+names(geneList)<-table_DEG_complete$ID
+geneList<-geneList[order(geneList, decreasing = TRUE)]
+
+msigdbr_df <- msigdbr(species = "human", category = "C7")
+
+# fixing format to work with fgsea
+
+pathwaysH = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
+
+# run fgsea enrichment
+
+set.seed(123)
+fgseaRes <- fgsea(pathways=pathwaysH, geneList)
+
+# run fgsea enrichment
+
+fgseaRes <- fgseaRes %>% 
+  filter(pval<0.05)
+
+fgseaRes$leadingEdge_1<-
+unlist(lapply(fgseaRes$leadingEdge, function (x) paste0(x,collapse = ",")))
+
+fgseaRes<- fgseaRes %>% 
+  select(-leadingEdge)
+```
+
+```{r}
+datatable_jm(fgseaRes)
+```
+
+```{r}
+# Representació gràfica 
+
+fgseaRes <-
+fgseaRes %>% 
+  mutate(NES_cat=ifelse(NES<0,"Down","Up"))
+
+num<-20
+
+fgseaRes_1 <- fgseaRes %>%
+  group_by(NES_cat) %>% 
+  arrange(pval) %>% 
+  slice_head(n=20) %>% 
+  group_by(pathway) %>% 
+  
+  mutate(pathway_mod=
+           ifelse(length(strsplit(pathway, "")[[1]])>num,paste0(paste0((strsplit(pathway, ""))[[1]][1:num],collapse = ""), "..."),pathway))%>% 
+   ungroup()%>% 
+   arrange(pval) %>% 
+  mutate(pathway_mod=paste0(row_number(),":",pathway_mod))
+
+fgseaRes_graph <- fgseaRes_1 %>% 
+    group_by(NES_cat) %>%
+    slice_head(n=10) %>% 
+    ggplot(aes(x = NES, y = fct_reorder(pathway_mod, NES))) + 
+    geom_segment(aes(yend = pathway_mod,colour = pval), xend = 0, size=3) +
+    geom_point(aes(color = pval),size = 5) +
+    theme_bw(base_size = 15) +
+    theme(text = element_text(size=12))+
+    # scale_colour_gradient(limits=c(0, pvalue), low="red") +
+    ylab(NULL)+
+    facet_grid(.~NES_cat,scales = "free")+
+  scale_colour_continuous(low = "#f29191",
+                         high = "#4ca4fc")
+
+fgseaRes_graph
+
+png(paste0(resultatsplots, "/C7_IMMUNOGENIC_median_graph.png"),width = 900,height = 600,res=100)
+fgseaRes_graph
+dev.off()
+
+save(fgseaRes, file=paste0(resultatstaules, "/C7_IMMUNOGENIC_median"))
+write.csv(fgseaRes, file=paste0(resultatstaules, "/C7_IMMUNOGENIC_median.csv")) 
+
+```
+
