@@ -72,7 +72,7 @@ data('linkedOmics.data')
 library(XML)
 library(RCurl)
 library(rlist)
-# 
+ 
 # url<-"https://linkedomics.org/data_download/CPTAC-PDAC/mRNA_RSEM_UQ_log2_Tumor.cct"
 # theurl <- getURL(url,.opts = list(ssl.verifypeer = FALSE) )
 # head(theurl)

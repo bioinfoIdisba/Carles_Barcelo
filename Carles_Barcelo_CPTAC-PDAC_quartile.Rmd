@@ -135,7 +135,7 @@ table_DEG_quartil <- topTable(data.fit.eb, number = Inf,adjust.method = "fdr",ge
 
 table_DEG_sig_quartil <-table_DEG_quartil %>% 
   filter(adj.P.Val<=0.05)
-dim(table_DEG_sig_quartil)
+
 
 save(table_DEG_quartil, file=paste0(resultatstaules, "/table_DEG_quartil"))
 save(table_DEG_sig_quartil, file=paste0(resultatstaules, "/table_DEG_sig_quartil"))
@@ -151,7 +151,7 @@ datatable_jm(table_DEG_sig_quartil)
 ### GO_GSEA
 ```{r}
 load(paste0(resultatstaules,"/table_DEG_sig_quartil"))
-load(paste0(resultatstaules,"/table_DEG_quartile"))
+load(paste0(resultatstaules,"/table_DEG_quartil"))
 
 # GO GSEA
 
