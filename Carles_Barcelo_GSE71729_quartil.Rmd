@@ -773,3 +773,159 @@ save(fgseaRes, file=paste0(resultatstaules, "/C7_IMMUNOGENIC_quartile"))
 write.csv(fgseaRes, file=paste0(resultatstaules, "/C7_IMMUNOGENIC_quartile.csv")) 
 
 ```
+
+## Correlació PLAC8 amb diferents sets de gens
+### Molecular subtyping
+```{r}
+# Molecular subtyping (set of genes):
+genes_mol_sub <- c("GATA6", "CDH1","HNF4A", "FOXA1", "KT5", "FAT2", "S100A2", "VIM", "PTHLH", "P63")
+
+# Correlacionar gen PLAC8 amb els gens anteriors:
+
+# matriu_exprs[gset_norm@featureData@data$ID[gset_norm@featureData@data$ID=="PLAC8"]]
+
+table(gset_norm@featureData@data$ID==genes_mol_sub[10])
+# Falten gens KT5 i P63
+
+# "GATA6"= "ILMN_1695041"
+# "CDH1"= "ILMN_1770940"
+# "HNF4A"= "ILMN_1698546" "ILMN_1739886" "ILMN_2372124"
+# "FOXA1"="ILMN_1766650"
+# "FAT2""ILMN_2128931"
+# "S100A2","ILMN_1725852"
+# "VIM", "ILMN_1782538" "ILMN_2058251"
+# "PTHLH", "ILMN_1785699" "ILMN_2314169"
+
+# sondes_mol_sub <- c("ILMN_1695041", "ILMN_1770940", "ILMN_1698546", "ILMN_1739886", "ILMN_2372124", "ILMN_1766650", "ILMN_2128931", "ILMN_1725852", "ILMN_1782538","ILMN_2058251", "ILMN_1785699", "ILMN_2314169")
+
+# cortest<- cor.test(matriu_exprs[rownames(matriu_exprs)=="ILMN_1653026"], matriu_exprs[gset_norm@featureData@data$ID==sondes_mol_sub[2]])
+
+taula_cor_test <-matrix(nrow=length(genes_mol_sub), ncol = 2)
+i=1
+for (i in 1:length(genes_mol_sub)) {
+  gen_in_matrix <- sum(gset_norm@featureData@data$ID==genes_mol_sub[i])
+ if(gen_in_matrix>0){
+  matriu_plac <-matriu_exprs[gset_norm@featureData@data$ID=="PLAC8",]
+
+  matriu_2 <-matriu_exprs[
+  gset_norm@featureData@data$ID==genes_mol_sub[i],]          
+
+cortest <- cor.test(matriu_plac,matriu_2)
+taula_cor_test[i,1]<-cortest$estimate
+taula_cor_test[i,2]<-cortest$p.value
+row.names(taula_cor_test)<- genes_mol_sub
+row.names(taula_cor_test)<- gset_norm@featureData@data$ID[match(row.names(taula_cor_test), gset_norm@featureData@data$ID)]
+colnames(taula_cor_test)<- c("cor", "pvalue")
+}}
+
+taula_cor_test <- taula_cor_test[complete.cases(taula_cor_test),]
+
+```
+
+Taula de correlacions gen PLAC8 amb els diferents gens del set Molecular subtyping.
+
+```{r}
+datatable_jm(taula_cor_test)
+```
+
+### Stemness genes
+```{r}
+# Stemness genes (set of genes):
+# Abca1, Plod2, Abcg1, c-Kit, Cd133, Lrg5, 
+genes_stemness <- c("ABCA1", "PLOD2","ABCG1", "c-KIT", "CD133", "LRG5")
+
+# Correlacionar gen PLAC8 amb els gens anteriors:
+# matriu_exprs[gset_norm@featureData@data$ID[gset_norm@featureData@data$`Gene symbol`=="PLAC8"]]
+# matriu_exprs[gset_norm@featureData@data$ID=="ILMN_1653026"]
+
+# table(gset_norm@featureData@data$`Gene symbol`==genes_stemness[1])
+# "c-KIT", "CD133", "LRG5" no hi son
+
+# gset_norm@featureData@data$ID[gset_norm@featureData@data$`Gene symbol`==genes_stemness[3]]
+
+# "ABCA1""ILMN_1766054"
+# "PLOD2""ILMN_1771599" "ILMN_1799139" "ILMN_2410924"
+# "ABCG1""ILMN_1658176" "ILMN_1695968" "ILMN_1794782" "ILMN_2262362" "ILMN_2329927"
+
+# sondes_stemness <- c("ILMN_1766054", "ILMN_1771599", "ILMN_1799139", "ILMN_2410924", "ILMN_1658176", "ILMN_1695968", "ILMN_1794782", "ILMN_2262362", "ILMN_2329927")
+
+taula_cor_test <-matrix(nrow=length(genes_stemness), ncol = 2)
+i=1
+for (i in 1:length(genes_stemness)) {
+  gen_in_matrix <- sum(gset_norm@featureData@data$ID==genes_stemness[i])
+ if(gen_in_matrix>0){
+  matriu_plac <-matriu_exprs[gset_norm@featureData@data$ID=="PLAC8",]
+
+  matriu_2 <-matriu_exprs[
+  gset_norm@featureData@data$ID==genes_stemness[i],]          
+
+cortest <- cor.test(matriu_plac,matriu_2)
+taula_cor_test[i,1]<-cortest$estimate
+taula_cor_test[i,2]<-cortest$p.value
+row.names(taula_cor_test)<- genes_stemness
+row.names(taula_cor_test)<- gset_norm@featureData@data$ID[match(row.names(taula_cor_test), gset_norm@featureData@data$ID)]
+colnames(taula_cor_test)<- c("cor", "pvalue")
+}}
+
+taula_cor_test <- taula_cor_test[complete.cases(taula_cor_test),]
+```
+
+Taula de correlacions gen PLAC8 amb els diferents gens del geneset Stemness.
+
+```{r}
+datatable_jm(taula_cor_test)
+```
+
+### EMT genes
+```{r}
+# EMT genes (set of genes):
+genes_emt <- c("CDH1", "SNAI2", "TWIST1", "LRRC1", "PDPN", "OCLN", "KRT8", "KRT18", "HAS2") 
+
+# Correlacionar gen PLAC8 amb els gens anteriors:
+  # matriu_exprs[gset_norm@featureData@data$ID=="ILMN_1653026"]
+
+# table(gset_norm@featureData@data$`Gene symbol`==genes_emt[1])
+# gset_norm@featureData@data$ID[gset_norm@featureData@data$`Gene symbol`==genes_emt[9]]
+
+# Relació gene symbol i sondes
+# "CDH1" "ILMN_1770940"
+# "SNAI2" "ILMN_1655740" "ILMN_2082585"
+# "TWIST1""ILMN_1672908"
+# "LRRC1""ILMN_1669103" "ILMN_1725680" "ILMN_1755383"
+# "PDPN""ILMN_1670490" "ILMN_2404903"
+# "OCLN""ILMN_1724149" "ILMN_2255088"
+# "KRT8""ILMN_1753584"
+# "KRT18""ILMN_1730848" "ILMN_1803408"
+# "HAS2""ILMN_1700935" "ILMN_1777562" "ILMN_1792978" "ILMN_2243036"
+
+# Creació de variable amb les sondes d'interés
+# sondes_emt <- c("ILMN_1770940", "ILMN_1655740", "ILMN_2082585", "ILMN_1672908", "ILMN_1669103", "ILMN_1725680", "ILMN_1755383","ILMN_1670490", "ILMN_2404903","ILMN_1724149", "ILMN_2255088", "ILMN_1753584","ILMN_1730848", "ILMN_1803408","ILMN_1700935", "ILMN_1777562", "ILMN_1792978", "ILMN_2243036")
+
+# Taula de correlacions gen PLAC8 amb els diferents gens del gene set emt
+taula_cor_test <-matrix(nrow=length(genes_emt), ncol = 2)
+i=1
+for (i in 1:length(genes_emt)) {
+  gen_in_matrix <- sum(gset_norm@featureData@data$ID==genes_emt[i])
+ if(gen_in_matrix>0){
+  matriu_plac <-matriu_exprs[gset_norm@featureData@data$ID=="PLAC8",]
+
+  matriu_2 <-matriu_exprs[
+  gset_norm@featureData@data$ID==genes_emt[i],]          
+
+cortest <- cor.test(matriu_plac,matriu_2)
+taula_cor_test[i,1]<-cortest$estimate
+taula_cor_test[i,2]<-cortest$p.value
+row.names(taula_cor_test)<- genes_emt
+row.names(taula_cor_test)<- gset_norm@featureData@data$ID[match(row.names(taula_cor_test), gset_norm@featureData@data$ID)]
+colnames(taula_cor_test)<- c("cor", "pvalue")
+}}
+
+taula_cor_test <- taula_cor_test[complete.cases(taula_cor_test),]
+```
+
+Taula de correlacions gen PLAC8 amb els diferents gens del geneset EMT.
+
+```{r}
+datatable_jm(taula_cor_test)
+```
+
